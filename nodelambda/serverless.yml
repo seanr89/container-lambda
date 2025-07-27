@@ -1,0 +1,16 @@
+service: nodelambda
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-west-1   # Choose your desired AWS region
+
+functions:
+  hello:
+    handler: index.handler
+    events:
+      - schedule: cron(0 12 * * ? *) # Run every day at 12:00 PM UTC
+
+# You can also use a rate expression:
+#      - schedule: rate(5 minutes) # Run every 5 minutes
