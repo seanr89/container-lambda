@@ -12,6 +12,10 @@ help:
 
 .PHONY: init plan apply destroy build
 
+buildevents: ## build the docker image for event lambda
+	@echo "Building image for event lambda"
+	cd eventlambda && docker build -t event-lambda .
+
 init: ## initialise the terraform
 	terraform -chdir=$(TF_DIR) init
 
@@ -20,7 +24,7 @@ plan: ## plan the changes
 
 apply: ## apply the changes
 	ECR_IMAGE_URI=553253085605.dkr.ecr.eu-west-1.amazonaws.com/container-lambda:latest
-	@echo "Remember to provide the ECR_IMAGE_URI, e.g., make apply ECR_IMAGE_URI=123456789012.dkr.ecr.us-east-1.amazonaws.com/my-repo:latest"
+	@echo "Remember to provide the ECR_IMAGE_URI, e.g., make apply ECR_IMAGE_URI=123456789012.dkr.ecr.us-east-1.amazonaws.com/container-lambda:latest"
 	terraform -chdir=$(TF_DIR) apply -var="ecr_image_uri=$(ECR_IMAGE_URI)" -auto-approve
 
 apply-sqs-lambda: ## apply the changes
