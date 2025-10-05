@@ -1,13 +1,13 @@
 variable "aws_region" {
   description = "AWS region for deployment"
   type        = string
-  default     = "us-east-1"
+  default     = "eu-west-1"
 }
 
 variable "s3_bucket_name" {
   description = "Name of the S3 bucket"
   type        = string
-  default     = "my-unique-lambda-trigger-bucket"
+  default     = "container-lambda-bucket"
 }
 
 variable "lambda_function_name" {
@@ -19,4 +19,5 @@ variable "lambda_function_name" {
 variable "ecr_image_uri" {
   description = "URI of the ECR image for the Lambda function"
   type        = string
+  default     = "553253085605.dkr.ecr.eu-west-1.amazonaws.com/container-lambda:latest"
 }
