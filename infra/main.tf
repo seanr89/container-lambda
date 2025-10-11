@@ -1,3 +1,13 @@
+data "aws_ecr_image" "s3_triggered_lambda_image" {
+  repository_name = var.ecr_repository_name
+  image_tag       = "latest"
+}
+
+data "aws_ecr_image" "sqs_triggered_lambda_image" {
+  repository_name = var.event_lambda_repository_name
+  image_tag       = "latest"
+}
+
 resource "random_id" "id" {
   byte_length = 8
 }
@@ -64,16 +74,17 @@ resource "aws_iam_role_policy" "s3_read_policy" {
 
 resource "aws_lambda_function" "s3_triggered_lambda" {
   function_name = var.lambda_function_name
+  description   = "This lambda is triggered by an S3 event and writes the event to an SQS queue."
   package_type  = "Image"
-  image_uri     = var.ecr_image_uri
+  image_uri     = data.aws_ecr_image.s3_triggered_lambda_image.image_uri
   role          = aws_iam_role.lambda_exec_role.arn
   timeout       = 300
   memory_size   = 128
   architectures = ["arm64"]
-
   environment {
     variables = {
-      SQS_QUEUE_URL = aws_sqs_queue.event_queue.url
+      SQS_QUEUE_URL = aws_sqs_queue.event_queue.url,
+      REGION = "${var.aws_region}"
     }
   }
 }
@@ -101,7 +112,8 @@ resource "aws_s3_bucket_notification" "s3_lambda_trigger" {
 }
 
 resource "aws_sqs_queue" "event_queue" {
-  name = "${var.lambda_function_name}-queue"
+  name                       = "${var.lambda_function_name}-queue"
+  visibility_timeout_seconds = 300
 }
 
 resource "aws_iam_role_policy" "sqs_send_policy" {
@@ -114,6 +126,42 @@ resource "aws_iam_role_policy" "sqs_send_policy" {
       {
         Action = [
           "sqs:SendMessage",
+        ],
+        Effect   = "Allow"
+        Resource = aws_sqs_queue.event_queue.arn
+      },
+    ]
+  })
+}
+
+resource "aws_lambda_function" "sqs_triggered_lambda" {
+  function_name = "${var.lambda_function_name}-event"
+  description   = "This lambda is triggered by an SQS event."
+  package_type  = "Image"
+  image_uri     = data.aws_ecr_image.sqs_triggered_lambda_image.image_uri
+  role          = aws_iam_role.lambda_exec_role.arn
+  timeout       = 300
+  memory_size   = 128
+  architectures = ["arm64"]
+}
+
+resource "aws_lambda_event_source_mapping" "sqs_lambda_trigger" {
+  event_source_arn = aws_sqs_queue.event_queue.arn
+  function_name    = aws_lambda_function.sqs_triggered_lambda.arn
+}
+
+resource "aws_iam_role_policy" "sqs_receive_policy" {
+  name = "${var.lambda_function_name}-sqs-receive-policy"
+  role = aws_iam_role.lambda_exec_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
         ],
         Effect   = "Allow"
         Resource = aws_sqs_queue.event_queue.arn

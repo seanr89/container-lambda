@@ -1,10 +1,10 @@
 const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
-const sqsClient = new SQSClient({ region: process.env.AWS_REGION });
+const sqsClient = new SQSClient({ region: process.env.AWS_REGION ?? 'eu-west-1' });
 
 module.exports.handler = async (event) => {
   const bucket = event.Records[0].s3.bucket.name;
   const key = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, ' '));
-  console.log(`s3 object key: ${key} from bucket: ${bucket}`);
+  console.log(`Found new s3 object key: ${key} from bucket: ${bucket}`);
 
   const message = {
     bucket,
@@ -18,6 +18,7 @@ module.exports.handler = async (event) => {
   });
 
   try {
+    console.log("Sending message to SQS...");
     const data = await sqsClient.send(command);
     console.log("Success, message sent. MessageID:", data.MessageId);
   } catch (err) {

@@ -1,4 +1,6 @@
 TF_DIR = infra
+ECR_REPOSITORY_NAME ?= container-lambda
+EVENT_LAMBDA_ECR_REPOSITORY_NAME ?= eventlambda
 
 .DEFAULT_GOAL := help
 
@@ -23,14 +25,12 @@ plan: ## plan the changes
 	terraform -chdir=$(TF_DIR) plan
 
 apply: ## apply the changes
-	ECR_IMAGE_URI=553253085605.dkr.ecr.eu-west-1.amazonaws.com/container-lambda:latest
-	@echo "Remember to provide the ECR_IMAGE_URI, e.g., make apply ECR_IMAGE_URI=123456789012.dkr.ecr.us-east-1.amazonaws.com/container-lambda:latest"
-	terraform -chdir=$(TF_DIR) apply -var="ecr_image_uri=$(ECR_IMAGE_URI)" -auto-approve
+	@echo "Using ECR_REPOSITORY_NAME: $(ECR_REPOSITORY_NAME)"
+	@echo "Using EVENT_LAMBDA_ECR_REPOSITORY_NAME: $(EVENT_LAMBDA_ECR_REPOSITORY_NAME)"
+	terraform -chdir=$(TF_DIR) apply -var="ecr_repository_name=$(ECR_REPOSITORY_NAME)" -var="event_lambda_repository_name=$(EVENT_LAMBDA_ECR_REPOSITORY_NAME)" -auto-approve
 
 apply-sqs-lambda: ## apply the changes
-	echo "Remember to provide the ECR_IMAGE_URI, e.g., make apply"
+	echo "Remember to provide the ECR_REPOSITORY_NAME and EVENT_LAMBDA_ECR_REPOSITORY_NAME, e.g., make apply"
 
 destroy: ## destroy the resources
 	terraform -chdir=$(TF_DIR) destroy
-
-

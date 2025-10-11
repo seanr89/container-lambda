@@ -16,8 +16,14 @@ variable "lambda_function_name" {
   default     = "my-s3-triggered-lambda"
 }
 
-variable "ecr_image_uri" {
-  description = "URI of the ECR image for the Lambda function"
+variable "ecr_repository_name" {
+  description = "Name of the ECR repository for the main Lambda function"
   type        = string
-  default     = "553253085605.dkr.ecr.eu-west-1.amazonaws.com/container-lambda:latest"
+  default     = "container-lambda"
+}
+
+variable "event_lambda_repository_name" {
+  description = "Name of the ECR repository for the event Lambda function"
+  type        = string
+  default     = "eventlambda"
 }
