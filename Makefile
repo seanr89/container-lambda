@@ -34,3 +34,11 @@ apply-sqs-lambda: ## apply the changes
 
 destroy: ## destroy the resources
 	terraform -chdir=$(TF_DIR) destroy
+
+upload-storage-docker: ## upload the docker image to s3
+	@echo "Uploading image to S3"
+	cd scripts && ./push_image.sh
+
+upload-event-lambda-docker: ## upload the event lambda docker image to ecr
+	@echo "Uploading event lambda image to ECR"
+	cd scripts && ./push_event_lambda_image.sh

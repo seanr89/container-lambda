@@ -64,6 +64,9 @@ resource "aws_iam_role_policy" "s3_read_policy" {
       {
         Action = [
           "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:CopyObject"
         ],
         Effect   = "Allow"
         Resource = "${aws_s3_bucket.lambda_trigger_bucket.arn}/*"
@@ -103,6 +106,7 @@ resource "aws_s3_bucket_notification" "s3_lambda_trigger" {
   lambda_function {
     lambda_function_arn = aws_lambda_function.s3_triggered_lambda.arn
     events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "inbound/"
   }
 
   depends_on = [
@@ -135,7 +139,7 @@ resource "aws_iam_role_policy" "sqs_send_policy" {
 }
 
 resource "aws_lambda_function" "sqs_triggered_lambda" {
-  function_name = "${var.lambda_function_name}-event"
+  function_name = "${var.lambda_function_name}-sqs"
   description   = "This lambda is triggered by an SQS event."
   package_type  = "Image"
   image_uri     = data.aws_ecr_image.sqs_triggered_lambda_image.image_uri
