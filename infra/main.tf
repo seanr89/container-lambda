@@ -81,8 +81,8 @@ resource "aws_lambda_function" "s3_triggered_lambda" {
   package_type  = "Image"
   image_uri     = data.aws_ecr_image.s3_triggered_lambda_image.image_uri
   role          = aws_iam_role.lambda_exec_role.arn
-  timeout       = 300
-  memory_size   = 128
+  timeout       = 120
+  memory_size   = 256
   architectures = ["arm64"]
   environment {
     variables = {
@@ -144,7 +144,7 @@ resource "aws_lambda_function" "sqs_triggered_lambda" {
   package_type  = "Image"
   image_uri     = data.aws_ecr_image.sqs_triggered_lambda_image.image_uri
   role          = aws_iam_role.lambda_exec_role.arn
-  timeout       = 300
+  timeout       = 120
   memory_size   = 128
   architectures = ["arm64"]
 }

@@ -1,8 +1,21 @@
 const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
-const { S3Client, GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const client = new S3Client({}); // Initialize S3 Client
 const sqsClient = new SQSClient({ region: process.env.AWS_REGION ?? 'eu-west-1' });
 
+/**
+ * A helper function to simulate an asynchronous operation (like fetching data)
+ * @param {number} value - The value to return after the delay.
+ * @returns {Promise<number>} - A promise that resolves with the value after 1 second.
+ */
+const delay = (timeout) => {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      console.log(`Processing delay: ${timeout}ms completed.`);
+      resolve(timeout * 2); // Simulating an asynchronous calculation
+    }, timeout);
+  });
+};
 
 // Helper function to read the full file content from S3
 async function getCsvContent(bucketName, key) {
@@ -100,43 +113,35 @@ module.exports.handler = async (event) => {
     const csvContent = await getCsvContent(bucket, key);
     // --- 3. Split the content into chunks ---
     const csvChunks = splitCsv(csvContent, numChunks);
-    
-    // --- 4. Process/Upload the chunks (Next Logical Step) ---
-    const uploadPromises = csvChunks.map(async (chunk, index) => {
-      const key = `chunks/processed/${trimmedKey.replace('.csv', '')}_chunk_${index + 1}.csv`;
-      console.log(`Uploading chunk ${index + 1} to s3://${bucket}/${key}`);
+
+    for (let i = 0; i < csvChunks.length; i++) {
+      const key = `chunks/processed/${trimmedKey.replace('.csv', '')}_chunk_${i + 1}.csv`;
+      console.log(`Uploading chunk ${i + 1} to s3://${bucket}/${key}`);
       // In a real Lambda, you would use PutObjectCommand here to upload the chunk:
       await client.send(new PutObjectCommand({
           Bucket: bucket,
           Key: key,
-          Body: chunk,
+          Body: csvChunks[i],
           ContentType: 'text/csv'
       }));
+      await delay(1500); // Simulate some processing delay
 
       const message = {
         bucket,
         key,
         message: "Chunked file processed successfully"
       };
-      console.log(`Sending message for chunk ${index + 1} to SQS: ${JSON.stringify(message)}`);
+      console.log(`Sending message for chunk ${i + 1} to SQS: ${JSON.stringify(message)}`);
 
       const command = new SendMessageCommand({
         QueueUrl: process.env.SQS_QUEUE_URL,
         MessageBody: JSON.stringify(message),
       });
       await sqsClient.send(command);
-        
-        // For demonstration, we just return a successful promise.
-      return Promise.resolve({
-          status: 'uploaded',
-          chunkKey: chunkKey
-      });
-    });
-        
-    const uploadResults = await Promise.all(uploadPromises);
+    }
     console.log("All chunks processed successfully.");
 
-    //TODO: lets move the incoming file to an archive folder?
+    // Lets move the S3 triggered file to an archive folder!
     const archiveKey = `archive/${trimmedKey}`;
     await client.send(new CopyObjectCommand({
         Bucket: bucket,
@@ -151,10 +156,10 @@ module.exports.handler = async (event) => {
     return {
         statusCode: 200,
         body: JSON.stringify({ 
-            message: `${csvChunks.length} chunks generated and processed.`,
-            uploadedKeys: uploadResults.map(r => r.chunkKey)
+            message: `${csvChunks.length} chunks generated and processed.`
         }),
     };
+    
   } catch (error) {
     console.error("Error processing CSV:", error);
     return {
@@ -165,29 +170,4 @@ module.exports.handler = async (event) => {
         }),
     };
   }
-
-  // const command = new SendMessageCommand({
-  //   QueueUrl: process.env.SQS_QUEUE_URL,
-  //   MessageBody: JSON.stringify(message),
-  // });
-
-  // try {
-  //   console.log("Sending message to SQS...");
-  //   const data = await sqsClient.send(command);
-  //   console.log("Success, message sent. MessageID:", data.MessageId);
-  // } catch (err) {
-  //   console.error("Error", err);
-  // }
-
-  // return {
-  //   statusCode: 200,
-  //   body: JSON.stringify(
-  //     {
-  //       message: "Ingested S3 Event was successfully processed!",
-  //       input: event,
-  //     },
-  //     null,
-  //     2
-  //   ),
-  // };
 };
